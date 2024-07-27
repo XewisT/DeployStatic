@@ -1,0 +1,18 @@
+# Виключення файлів конфігурації Terraform з розширенням .tfvars
+*.tfvars
+
+# Виключення файлів .terraform та терраформових станів
+*.tfstate
+*.tfstate.backup
+.terraform/
+
+# Виключення файлів логів і блокувань
+crash.log
+*.log
+*.tfplan
+*.backup
+*.tfsec.json
+
+# Виключення особистих налаштувань
+.terraformrc
+terraform.rc

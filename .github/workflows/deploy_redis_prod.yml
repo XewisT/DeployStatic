@@ -1,0 +1,62 @@
+name: Deploy to ECR
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - Prod
+
+env:
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ECR_REPOSITORY: ${{ vars.BACKEND_REDIS_PROD }}
+  EC2_HOST: ${{ vars.EC2_HOST_PROD }}
+  ACCOUNT_ID: ${{ vars.ACCOUNT_ID }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  IMAGE_TAG: ${{ github.run_number }}
+  ENVNAME: ${{ github.ref_name }}
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push image to ECR
+      run: |
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
+
+    - name: Sync files to S3
+      run: |
+        aws s3 sync . s3://static-task --delete --exclude "*" --include "frontend/*""
+
+    - name: Invalidate CloudFront cache
+      run: |
+        aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+    - name: Deploy to EC2
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
+          cd GitDev
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          yq e '.services.backend_redis.image = "$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+          docker-compose down
+          docker-compose up -d
+        EOF
