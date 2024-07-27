@@ -1,18 +1,20 @@
+# Dockerfile for backend_redis
+
 FROM python:3.10-slim
 
+# Set the working directory to /app
 WORKDIR /app
 
-# Скопіюйте файл requirements.txt у робочу директорію
-COPY backend_rds/requirements.txt /app/
-
-# Встановіть залежності з файлу requirements.txt
+# Copy requirements.txt and install any dependencies
+COPY backend_redis/requirements.txt /app/
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Скопіюйте всі файли проєкту у робочу директорію
-COPY . /app/
+# Copy the current directory contents into the container at /app
+COPY backend_redis /app/
 
-# Відкрийте порт 8000 для доступу до вашого застосунку
+# Make port 8000 available to the world outside this container
 EXPOSE 8000
 
-# Вкажіть команду для запуску вашого застосунку з затримкою 10 секунд
-CMD ["sh", "-c", "sleep 10 && python manage.py runserver 0.0.0.0:8000"]
+
+# Run app.py when the container launches
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
