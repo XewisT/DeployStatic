@@ -7,14 +7,13 @@ resource "aws_instance" "backend_prod" {
   security_groups        = [aws_security_group.ec2_sg.id]
 
   user_data = <<-EOF
-              #!/bin/bash
-              sudo apt update -y && sudo apt upgrade -y
-              sudo apt install yq -y
-              sudo apt install docker.io -y
-              sudo apt install docker-compose -y
-              usermod -a -G docker ubuntu
-              mkdir GitDev
-              service docker start
+                #!/bin/bash
+                sudo apt update -y && sudo apt upgrade -y
+                sudo snap install yq -y
+                sudo apt install docker-compose -y
+                usermod -a -G docker ubuntu
+                mkdir GitDev
+                service docker start
               EOF
 
   tags = {
@@ -29,15 +28,14 @@ resource "aws_instance" "backend_dev" {
   security_groups        = [aws_security_group.ec2_sg.id]
 
   user_data = <<-EOF
-              #!/bin/bash
-              sudo apt update -y && sudo apt upgrade -y
-              sudo apt install yq -y
-              sudo apt install docker.io -y
-              sudo apt install docker-compose -y
-              usermod -a -G docker ubuntu
-              mkdir GitDev
-              service docker start
-              EOF
+                #!/bin/bash
+                sudo apt update -y && sudo apt upgrade -y
+                sudo snap install yq -y
+                sudo apt install docker-compose -y
+                usermod -a -G docker ubuntu
+                mkdir GitDev
+                service docker start
+                EOF
 
   tags = {
     Name = "Backend Dev"
