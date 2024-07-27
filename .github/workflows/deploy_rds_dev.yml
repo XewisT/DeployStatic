@@ -36,12 +36,12 @@ jobs:
 
     - name: Build and push image to ECR
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG .
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG -f backend_rds/Dockerfile .
         docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
 
     - name: Sync files to S3
       run: |
-        aws s3 sync . s3://static-task --delete --exclude "*" --include "frontend/*""
+        aws s3 sync . s3://dev-xew --delete --exclude "*" --include "frontend/*""
 
     - name: Invalidate CloudFront cache
       run: |
