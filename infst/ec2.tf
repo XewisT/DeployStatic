@@ -11,7 +11,9 @@ resource "aws_instance" "backend_prod" {
               sudo apt update -y && sudo apt upgrade -y
               sudo apt install yq -y
               sudo apt install docker.io -y
+              sudo apt install docker-compose -y
               usermod -a -G docker ubuntu
+              mkdir GitDev
               service docker start
               EOF
 
@@ -31,7 +33,9 @@ resource "aws_instance" "backend_dev" {
               sudo apt update -y && sudo apt upgrade -y
               sudo apt install yq -y
               sudo apt install docker.io -y
+              sudo apt install docker-compose -y
               usermod -a -G docker ubuntu
+              mkdir GitDev
               service docker start
               EOF
 
