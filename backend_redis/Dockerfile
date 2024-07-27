@@ -3,13 +3,13 @@ FROM python:3.10-slim
 WORKDIR /app
 
 # Скопіюйте файл requirements.txt у робочу директорію
-COPY requirements.txt ./
+COPY backend_redis/requirements.txt /app/
 
 # Встановіть залежності з requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Скопіюйте всі файли проєкту у робочу директорію
-COPY . .
+COPY . /app/
 
 # Відкрийте порт 8000
 EXPOSE 8000
