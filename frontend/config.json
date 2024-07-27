@@ -1,5 +1,4 @@
 {
-    "BACKEND_RDS_URL": "http://3.127.78.249:8001/test_connection/",
-    "BACKEND_REDIS_URL": "http://3.127.78.249:8002/test_connection/"
-  }
-  
+  "BACKEND_RDS_URL": "http://dev-vysh.com:8001/test_connection/",
+  "BACKEND_REDIS_URL": "http://dev-vysh.com:8002/test_connection/"
+}
