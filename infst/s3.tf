@@ -88,28 +88,6 @@ resource "aws_s3_bucket_policy" "prod_bucket_policy" {
   })
 }
 
-
-# # Bucket Policy for Dev Bucket
-# resource "aws_s3_bucket_policy" "dev_bucket_policy" {
-#   bucket = aws_s3_bucket.dev_bucket.id
-#   depends_on = [null_resource.dev_delay]
-
-#   policy = <<EOF
-# {
-#   "Version": "2012-10-17",
-#   "Statement": [
-#     {
-#       "Sid": "PublicReadGetObject",
-#       "Effect": "Allow",
-#       "Principal": "*",
-#       "Action": "s3:GetObject",
-#       "Resource": "${aws_s3_bucket.dev_bucket.arn}/*"
-#     }
-#   ]
-# }
-# EOF
-# }
-
 resource "aws_s3_bucket_policy" "dev_bucket_policy" {
   bucket = aws_s3_bucket.dev_bucket.id
 

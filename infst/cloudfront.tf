@@ -28,7 +28,7 @@ resource "aws_cloudfront_distribution" "frontend_distribution" {
   comment             = "Front-end CloudFront Distribution"
   default_root_object = "frontend/templates/index.html"
 
-  aliases = ["dev-vysh.com"]  # Замініть на ваш домен
+  aliases = ["dev-vysh.com"]  
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
