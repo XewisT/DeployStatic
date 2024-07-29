@@ -40,14 +40,14 @@ resource "aws_security_group" "ec2_sg" {
     from_port   = 8001
     to_port     = 8001
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [aws_security_group.alb_sg.id]
   }
 
   ingress {
     from_port   = 8002
     to_port     = 8002
     protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    security_groups = [aws_security_group.alb_sg.id]
   }
   egress {
     from_port   = 0

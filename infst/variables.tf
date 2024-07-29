@@ -11,7 +11,8 @@ variable "aws_secret_key" {
 }
 
 variable "region" {
-  description = "AWS region"
+  default = "eu-central-1"
+  description = "The AWS region to deploy resources in"
   type        = string
 }
 

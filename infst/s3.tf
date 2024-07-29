@@ -17,7 +17,7 @@ resource "aws_s3_bucket_website_configuration" "prod_bucket_website" {
   }
 
   error_document {
-    key = "error.html"
+    key = "index.html"
   }
 }
 
@@ -30,7 +30,7 @@ resource "aws_s3_bucket_website_configuration" "dev_bucket_website" {
   }
 
   error_document {
-    key = "error.html"
+    key = "index.html"
   }
 }
 
