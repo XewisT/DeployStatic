@@ -3,18 +3,9 @@ resource "aws_instance" "backend_prod" {
   ami                    = "ami-07652eda1fbad7432"  # Replace with your desired AMI
   instance_type          = "t3.small"
   key_name = "ForEC"
+  user_data = "${file("user_data.sh")}"
   subnet_id              = aws_subnet.public_subnet_2.id
   security_groups        = [aws_security_group.ec2_sg.id]
-
-  user_data = <<-EOF
-                #!/bin/bash
-                sudo apt update -y && sudo apt upgrade -y
-                sudo snap install yq -y
-                sudo apt install docker-compose -y
-                usermod -a -G docker ubuntu
-                mkdir GitDev
-                service docker start
-              EOF
 
   tags = {
     Name = "Backend Prod"
@@ -24,18 +15,9 @@ resource "aws_instance" "backend_dev" {
   ami                    = "ami-07652eda1fbad7432"  # Replace with your desired AMI
   instance_type          = "t3.micro"
   key_name = "ForEC"
+  user_data = "${file("user_data.sh")}"
   subnet_id              = aws_subnet.public_subnet_2.id
   security_groups        = [aws_security_group.ec2_sg.id]
-
-  user_data = <<-EOF
-                #!/bin/bash
-                sudo apt update -y && sudo apt upgrade -y
-                sudo snap install yq -y
-                sudo apt install docker-compose -y
-                usermod -a -G docker ubuntu
-                mkdir GitDev
-                service docker start
-                EOF
 
   tags = {
     Name = "Backend Dev"
