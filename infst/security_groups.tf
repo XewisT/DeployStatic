@@ -64,15 +64,15 @@ resource "aws_security_group" "alb_sg" {
   vpc_id      = aws_vpc.main_vpc.id
 
   ingress {
-    from_port   = 80
-    to_port     = 80
+    from_port   = 8080
+    to_port     = 8080
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 443
-    to_port     = 443
+    from_port   = 8081
+    to_port     = 8081
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]
   }
@@ -90,17 +90,19 @@ resource "aws_security_group" "ec2_sg" {
   name_prefix = "ec2-sg-"
   vpc_id      = aws_vpc.main_vpc.id
 
-  # Allow traffic from ALB on ports 8001 and 8002
+  # Allow traffic from ALB on ports 3000 and 3001
   ingress {
-    from_port       = 8001
-    to_port         = 8001
+    description = "RDS"
+    from_port       = 3000
+    to_port         = 3000
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }
 
   ingress {
-    from_port       = 8002
-    to_port         = 8002
+    description = "REDIS"
+    from_port       = 3001
+    to_port         = 3001
     protocol        = "tcp"
     security_groups = [aws_security_group.alb_sg.id]
   }

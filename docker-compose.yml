@@ -9,7 +9,7 @@ services:
       DB_HOST: db
       DB_PORT: 5432
     ports:
-      - "8001:8000"
+      - "3000:8000"
     depends_on:
       - db
 
@@ -21,7 +21,7 @@ services:
       REDIS_PORT: 6379
       REDIS_DB: 0
     ports:
-      - "8002:8000"
+      - "3001:8000"
     depends_on:
       - redis
 
