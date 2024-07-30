@@ -12,7 +12,8 @@ resource "aws_lb" "app_lb" {
 resource "aws_lb_listener" "http_rds" {
   load_balancer_arn = aws_lb.app_lb.arn
   port              = 8080
-  protocol          = "HTTP"
+  protocol          = "HTTPS"
+  certificate_arn   = aws_acm_certificate.app_cert.arn
 
   default_action {
     type             = "forward"
@@ -23,7 +24,8 @@ resource "aws_lb_listener" "http_rds" {
 resource "aws_lb_listener" "http_redis" {
   load_balancer_arn = aws_lb.app_lb.arn
   port              = 8081
-  protocol          = "HTTP"
+  protocol          = "HTTPS"
+  certificate_arn   = aws_acm_certificate.app_cert.arn
 
   default_action {
     type             = "forward"
