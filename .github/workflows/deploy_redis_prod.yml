@@ -60,6 +60,8 @@ jobs:
           cd GitDev
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
           yq e '.services.backend_redis.image = "$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+          sleep 5
           docker-compose down
+          sleep 5
           docker-compose up -d
         EOF
