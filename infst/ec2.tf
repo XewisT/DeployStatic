@@ -6,6 +6,7 @@ resource "aws_instance" "backend_prod" {
   user_data = "${file("user_data.sh")}"
   subnet_id              = aws_subnet.public_subnet_2.id
   security_groups        = [aws_security_group.ec2_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ecr_instance_profile.name
 
   tags = {
     Name = "Backend Prod"
@@ -18,6 +19,7 @@ resource "aws_instance" "backend_dev" {
   user_data = "${file("user_data.sh")}"
   subnet_id              = aws_subnet.public_subnet_2.id
   security_groups        = [aws_security_group.ec2_sg.id]
+  iam_instance_profile   = aws_iam_instance_profile.ecr_instance_profile.name
 
   tags = {
     Name = "Backend Dev"

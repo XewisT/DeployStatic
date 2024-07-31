@@ -15,6 +15,7 @@ resource "aws_lb_listener" "https_rds" {
   protocol          = "HTTPS"
   certificate_arn   = aws_acm_certificate.app_cert.arn
 
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.rds.arn
@@ -27,6 +28,7 @@ resource "aws_lb_listener" "https_redis" {
   protocol          = "HTTPS"
   certificate_arn   = aws_acm_certificate.app_cert.arn
 
+
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.redis.arn
@@ -37,7 +39,7 @@ resource "aws_lb_listener" "https_redis" {
 resource "aws_lb_target_group" "rds" {
   name     = "rds-tg"
   port     = 3000
-  protocol = "HTTPS"
+  protocol = "HTTP"
   vpc_id   = aws_vpc.main_vpc.id
 
   health_check {
@@ -54,7 +56,7 @@ resource "aws_lb_target_group" "rds" {
 resource "aws_lb_target_group" "redis" {
   name     = "redis-tg"
   port     = 3001
-  protocol = "HTTPS"
+  protocol = "HTTP"
   vpc_id   = aws_vpc.main_vpc.id
 
   health_check {
