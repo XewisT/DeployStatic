@@ -1,10 +1,9 @@
 #! /bin/bash
-apt update -y
-apt install awscli -y
-apt install docker-compose -y
-apt install docker.io -y
-service docker start
-usermod -a -G docker ubuntu
-service docker start
+sudo apt update -y
+sudo apt install awscli -y
+sudo apt install docker-compose -y
+sudo apt install docker.io -y
+sudo service docker start
+sudo usermod -a -G docker ubuntu
 mkdir GitDev
-snap install yq -y
+sudo snap install yq -y
