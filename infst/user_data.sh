@@ -1,4 +1,4 @@
-#! /bin/bash
+#!/bin/bash
 sudo apt update -y
 sudo apt install awscli -y
 sudo apt install docker-compose -y
