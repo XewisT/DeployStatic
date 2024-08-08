@@ -1,4 +1,4 @@
 {
-  "BACKEND_RDS_URL": "https://app-lb-286497346.eu-central-1.elb.amazonaws.com:8080/test_connection/",
-  "BACKEND_REDIS_URL": "https://app-lb-286497346.eu-central-1.elb.amazonaws.com:8081/test_connection/"
+  "BACKEND_RDS_URL": "https://prod.dev-vysh.com",
+  "BACKEND_REDIS_URL": "https://prod.dev-vysh.com"
 }
