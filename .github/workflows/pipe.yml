@@ -22,8 +22,12 @@ jobs:
         environment: [Prod, Dev]
         repository: [backend_redis, backend_rds]
     env:
-      ECR_REPOSITORY: ${{ vars[matrix.repository | upper]_${{ matrix.environment | upper }} }}
-      EC2_HOST: ${{ vars.EC2_HOST_${{ matrix.environment | upper }} }}
+      ECR_REPOSITORY: ${{ matrix.environment == 'Prod' && matrix.repository == 'backend_redis' && vars.BACKEND_REDIS_PROD || 
+                          matrix.environment == 'Prod' && matrix.repository == 'backend_rds' && vars.BACKEND_RDS_PROD ||
+                          matrix.environment == 'Dev' && matrix.repository == 'backend_redis' && vars.BACKEND_REDIS_DEV ||
+                          matrix.environment == 'Dev' && matrix.repository == 'backend_rds' && vars.BACKEND_RDS_DEV }}
+      EC2_HOST: ${{ matrix.environment == 'Prod' && vars.EC2_HOST_PROD || 
+                   matrix.environment == 'Dev' && vars.EC2_HOST_DEV }}
       ENVNAME: ${{ github.ref_name }}
 
     steps:
