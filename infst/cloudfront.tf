@@ -14,18 +14,6 @@ resource "aws_cloudfront_distribution" "prod_distribution" {
     }
   }
 
-  origin {
-    domain_name = aws_lb.app_lb.dns_name # Replace with your ALB DNS name
-    origin_id   = "ALB-prod"
-
-    custom_origin_config {
-      http_port                = 80
-      https_port               = 443
-      origin_protocol_policy   = "https-only"
-      origin_ssl_protocols     = ["TLSv1.2"]
-    }
-  }
-
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "Prod CloudFront Distribution"
@@ -34,7 +22,7 @@ resource "aws_cloudfront_distribution" "prod_distribution" {
   aliases = ["prod.dev-vysh.com"]  
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3-prod-bucket"
 
@@ -51,25 +39,6 @@ resource "aws_cloudfront_distribution" "prod_distribution" {
     max_ttl                = 86400
   }
 
-  ordered_cache_behavior {
-    path_pattern = "/api/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "ALB-prod"
-
-    forwarded_values {
-      query_string = true
-      cookies {
-        forward = "all"
-      }
-    }
-
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 0
-    max_ttl                = 0
-  }
-
   restrictions {
     geo_restriction {
       restriction_type = "none"
@@ -82,6 +51,8 @@ resource "aws_cloudfront_distribution" "prod_distribution" {
   }
 }
 
+
+
 # Create a CloudFront distribution for the dev environment
 resource "aws_cloudfront_distribution" "dev_distribution" {
   origin {
@@ -93,18 +64,6 @@ resource "aws_cloudfront_distribution" "dev_distribution" {
     }
   }
 
-  origin {
-    domain_name = aws_lb.app_lb.dns_name  # Replace with your ALB DNS name
-    origin_id   = "ALB-dev"
-
-    custom_origin_config {
-      http_port                = 80
-      https_port               = 443
-      origin_protocol_policy   = "https-only"
-      origin_ssl_protocols     = ["TLSv1.2"]
-    }
-  }
-
   enabled             = true
   is_ipv6_enabled     = true
   comment             = "Dev CloudFront Distribution"
@@ -113,7 +72,7 @@ resource "aws_cloudfront_distribution" "dev_distribution" {
   aliases = ["dev.dev-vysh.com"]  
 
   default_cache_behavior {
-    allowed_methods  = ["GET", "HEAD", "OPTIONS"]
+    allowed_methods  = ["GET", "HEAD"]
     cached_methods   = ["GET", "HEAD"]
     target_origin_id = "S3-dev-bucket"
 
@@ -128,25 +87,6 @@ resource "aws_cloudfront_distribution" "dev_distribution" {
     min_ttl                = 0
     default_ttl            = 3600
     max_ttl                = 86400
-  }
-
-  ordered_cache_behavior {
-    path_pattern = "/api/*"
-    allowed_methods  = ["GET", "HEAD", "OPTIONS", "PUT", "POST", "PATCH", "DELETE"]
-    cached_methods   = ["GET", "HEAD"]
-    target_origin_id = "ALB-dev"
-
-    forwarded_values {
-      query_string = true
-      cookies {
-        forward = "all"
-      }
-    }
-
-    viewer_protocol_policy = "redirect-to-https"
-    min_ttl                = 0
-    default_ttl            = 0
-    max_ttl                = 0
   }
 
   restrictions {

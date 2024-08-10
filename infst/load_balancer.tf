@@ -94,7 +94,7 @@ resource "aws_lb_listener_rule" "rds_rule" {
 
   condition {
     path_pattern {
-      values = ["/test_connection/"]
+      values = ["prod.dev-vysh.com"]
     }
   }
 }
@@ -110,7 +110,7 @@ resource "aws_lb_listener_rule" "redis_rule" {
 
   condition {
     path_pattern {
-      values = ["/test_connection/"]
+      values = ["prod.dev-vysh.com"]
     }
   }
 }

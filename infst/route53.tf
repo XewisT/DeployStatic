@@ -20,3 +20,21 @@ resource "aws_route53_record" "dev" {
   ttl     = 300
   records = [aws_cloudfront_distribution.dev_distribution.domain_name]
 }
+
+# Create DNS records for RDS
+resource "aws_route53_record" "rds_subdomain" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "rds.prod.dev-vysh.com"
+  type    = "CNAME"
+  ttl     = "300"
+  records = [aws_lb.app_lb.dns_name]
+}
+
+# Create DNS records for Redis
+resource "aws_route53_record" "redis_subdomain" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "redis.prod.dev-vysh.com"
+  type    = "CNAME"
+  ttl     = "300"
+  records = [aws_lb.app_lb.dns_name]
+}
