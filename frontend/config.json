@@ -1,4 +1,4 @@
 {
-  "BACKEND_RDS_URL": "https://rdsprod.dev-vysh.com/test_connection/",
-  "BACKEND_REDIS_URL": "https://redisprod.dev-vysh.com/test_connection/"
+  "BACKEND_RDS_URL": "https://rds.dev-vysh.com/test_connection/",
+  "BACKEND_REDIS_URL": "https://redis.dev-vysh.com/test_connection/"
 }
