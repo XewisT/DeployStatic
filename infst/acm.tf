@@ -27,6 +27,7 @@ resource "aws_acm_certificate_validation" "site_cert_validation" {
 # Request an ACM certificate
 resource "aws_acm_certificate" "app_cert" {
   domain_name       = var.root_domain_name # Replace with your domain
+  subject_alternative_names = ["*.${var.root_domain_name}"]
   validation_method = "DNS"
   
   tags = {
