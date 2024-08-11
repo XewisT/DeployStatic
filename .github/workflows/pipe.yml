@@ -117,7 +117,8 @@ jobs:
           EC2_HOST=${{ vars.EC2_HOST_DEV }}
           S3_BUCKET="dev-xew"
         fi
-        echo "ECR_REPOSITORY=${{ vars[$ECR_REPOSITORY] }}" >> $GITHUB_ENV
+        # Dynamically reference the repository variable
+        echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
         echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
         echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
