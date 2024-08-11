@@ -84,8 +84,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - Prod
       - Dev
+      - Prod
 
 env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
@@ -97,23 +97,28 @@ env:
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     strategy:
       matrix:
-        environment: [Prod, Dev]
-        repository: [backend_redis, backend_rds]
-    env:
-      ECR_REPOSITORY: ${{ matrix.environment == 'Prod' && matrix.repository == 'backend_redis' && vars.BACKEND_REDIS_PROD || 
-                          matrix.environment == 'Prod' && matrix.repository == 'backend_rds' && vars.BACKEND_RDS_PROD ||
-                          matrix.environment == 'Dev' && matrix.repository == 'backend_redis' && vars.BACKEND_REDIS_DEV ||
-                          matrix.environment == 'Dev' && matrix.repository == 'backend_rds' && vars.BACKEND_RDS_DEV }}
-      EC2_HOST: ${{ matrix.environment == 'Prod' && vars.EC2_HOST_PROD || 
-                   matrix.environment == 'Dev' && vars.EC2_HOST_DEV }}
-      ENVNAME: ${{ github.ref_name }}
-
+        environment: [Dev, Prod]
+        service: [backend_rds, backend_redis]
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+
+    - name: Set environment variables
+      run: |
+        if [ "${{ matrix.environment }}" == "Prod" ]; then
+          ECR_REPOSITORY=${{ vars['BACKEND_'${{ matrix.service | upper }}'_PROD'] }}
+          EC2_HOST=${{ vars.EC2_HOST_PROD }}
+          S3_BUCKET="prod-xew"
+        else
+          ECR_REPOSITORY=${{ vars['BACKEND_'${{ matrix.service | upper }}'_DEV'] }}
+          EC2_HOST=${{ vars.EC2_HOST_DEV }}
+          S3_BUCKET="dev-xew"
+        fi
+        echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
+        echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
+        echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -128,12 +133,12 @@ jobs:
 
     - name: Build and push image to ECR
       run: |
-        docker build -t $ECR_REGISTRY/${{ matrix.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG -f backend_${{ matrix.environment }}/Dockerfile .
-        docker push $ECR_REGISTRY/${{ matrix.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
 
     - name: Sync files to S3
       run: |
-        aws s3 sync frontend/ s3://${{ matrix.branch }}-xew --delete
+        aws s3 sync frontend/ s3://$S3_BUCKET --delete
 
     - name: Invalidate CloudFront cache
       run: |
@@ -145,10 +150,11 @@ jobs:
       run: |
         echo "$SSH_PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ matrix.EC2_HOST }} << EOF
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
           cd GitDev
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          yq e '.services.backend_${{ matrix.environment }}.image = "$ECR_REGISTRY/${{ matrix.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+          yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
           docker-compose down
           docker-compose up -d
         EOF
+
