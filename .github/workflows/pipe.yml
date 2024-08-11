@@ -57,17 +57,14 @@ jobs:
         docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
 
     - name: Sync files to S3
-      if: github.ref_name == 'Prod'
       run: |
         aws s3 sync frontend/ s3://$S3_BUCKET --delete
 
     - name: Invalidate CloudFront cache
-      if: github.ref_name == 'Prod'
       run: |
         aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
     - name: Deploy to EC2
-      if: github.ref_name == 'Prod'
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       run: |
