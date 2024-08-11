@@ -9,7 +9,7 @@ resource "aws_lb" "app_lb" {
   enable_deletion_protection = false
 }
 
-resource "aws_lb_listener" "https_rds" {
+resource "aws_lb_listener" "http" {
   load_balancer_arn = aws_lb.app_lb.arn
   port              = 80
   protocol          = "HTTP"
@@ -25,7 +25,7 @@ resource "aws_lb_listener" "https_rds" {
   }
 }
 
-resource "aws_lb_listener" "https_redis" {
+resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.app_lb.arn
   port              = 443
   protocol          = "HTTPS"
@@ -87,7 +87,7 @@ resource "aws_lb_target_group_attachment" "redis_attachment" {
 
 # Define Listener Rules
 resource "aws_lb_listener_rule" "rds_rule" {
-  listener_arn = aws_lb_listener.https_rds.arn
+  listener_arn = aws_lb_listener.https.arn
   priority     = 100
 
   action {
@@ -97,13 +97,13 @@ resource "aws_lb_listener_rule" "rds_rule" {
 
   condition {
     host_header {
-      values = ["rdsprod.dev-vysh.com"]
+      values = ["rds.dev-vysh.com"]
     }
   }
 }
 
 resource "aws_lb_listener_rule" "redis_rule" {
-  listener_arn = aws_lb_listener.https_redis.arn
+  listener_arn = aws_lb_listener.https.arn
   priority     = 200
 
   action {
@@ -113,7 +113,7 @@ resource "aws_lb_listener_rule" "redis_rule" {
 
   condition {
     host_header {
-      values = ["redisprod.dev-vysh.com"]
+      values = ["redis.dev-vysh.com"]
     }
   }
 }

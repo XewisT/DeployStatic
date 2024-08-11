@@ -19,7 +19,7 @@ resource "aws_cloudfront_distribution" "prod_distribution" {
   comment             = "Prod CloudFront Distribution"
   default_root_object = "index.html"
 
-  aliases = ["prod.dev-vysh.com"]  
+  aliases = ["dev-vysh.com"]  
 
   default_cache_behavior {
     allowed_methods  = ["GET", "HEAD"]
