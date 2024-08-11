@@ -50,8 +50,8 @@ jobs:
 
     - name: Build and push image to ECR
       run: |
-        docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
-        docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
+        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
+        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
 
     - name: Sync files to S3
       if: github.ref_name == 'Prod'
