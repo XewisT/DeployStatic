@@ -108,7 +108,7 @@ jobs:
     - name: Set environment variables
       run: |
         if [ "${{ matrix.environment }}" == "Prod" ]; then
-          ECR_REPOSITORY=${{ vars['BACKEND_'${{ matrix.service | upper }}'_PROD'] }}
+          ECR_REPOSITORY=${{ vars.['BACKEND_'${{ matrix.service | upper }}'_PROD'] }}
           EC2_HOST=${{ vars.EC2_HOST_PROD }}
           S3_BUCKET="prod-xew"
         else
