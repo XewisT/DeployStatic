@@ -19,7 +19,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        environment: [Dev, Prod]
+        environment: [${{ github.ref_name }}] # This will only use the current branch as the environment
         service: [backend_rds, backend_redis]
     steps:
     - name: Checkout code
@@ -28,17 +28,14 @@ jobs:
     - name: Set environment variables
       run: |
         SERVICE_NAME=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
-        if [ "${{ matrix.environment }}" == "Prod" ] && [ "${{ github.ref_name }}" == "Prod" ]; then
+        if [ "${{ matrix.environment }}" == "Prod" ]; then
           ECR_REPOSITORY="BACKEND_${SERVICE_NAME}_PROD"
           EC2_HOST=${{ vars.EC2_HOST_PROD }}
           S3_BUCKET="prod-xew"
-        elif [ "${{ matrix.environment }}" == "Dev" ] && [ "${{ github.ref_name }}" == "Dev" ]; then
+        else
           ECR_REPOSITORY="BACKEND_${SERVICE_NAME}_DEV"
           EC2_HOST=${{ vars.EC2_HOST_DEV }}
           S3_BUCKET="dev-xew"
-        else
-          echo "Skipping job as the environment and branch do not match."
-          exit 0
         fi
         echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
         echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
