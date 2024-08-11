@@ -1,4 +1,4 @@
-name: Deploy to ECR (${{ github.ref_name }})
+name: Deploy to ECR
 
 on:
   workflow_dispatch:
