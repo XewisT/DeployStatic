@@ -28,11 +28,11 @@ jobs:
       run: |
         SERVICE_NAME=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
         if [ "${{ github.ref_name }}" == "Prod" ]; then
-          ECR_REPOSITORY="BACKEND_${SERVICE_NAME}_PROD"
+          ECR_REPOSITORY="${SERVICE_NAME}_PROD"
           EC2_HOST=${{ vars.EC2_HOST_PROD }}
           S3_BUCKET="prod-xew"
         else
-          ECR_REPOSITORY="BACKEND_${SERVICE_NAME}_DEV"
+          ECR_REPOSITORY="${SERVICE_NAME}_DEV"
           EC2_HOST=${{ vars.EC2_HOST_DEV }}
           S3_BUCKET="dev-xew"
         fi
