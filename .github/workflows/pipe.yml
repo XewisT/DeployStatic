@@ -107,13 +107,12 @@ jobs:
 
     - name: Set environment variables
       run: |
-        SERVICE_UPPER=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
         if [ "${{ matrix.environment }}" == "Prod" ]; then
-          ECR_REPOSITORY="BACKEND_${SERVICE_UPPER}_PROD"
+          ECR_REPOSITORY="BACKEND_${{ matrix.service | upper }}_PROD"
           EC2_HOST=${{ vars.EC2_HOST_PROD }}
           S3_BUCKET="prod-xew"
         else
-          ECR_REPOSITORY="BACKEND_${SERVICE_UPPER}_DEV"
+          ECR_REPOSITORY="BACKEND_${{ matrix.service | upper }}_DEV"
           EC2_HOST=${{ vars.EC2_HOST_DEV }}
           S3_BUCKET="dev-xew"
         fi
@@ -158,6 +157,4 @@ jobs:
           docker-compose down
           docker-compose up -d
         EOF
-
-
 
