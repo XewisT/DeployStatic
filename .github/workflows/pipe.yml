@@ -169,7 +169,6 @@ jobs:
         echo "$SSH_PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
         ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
-          cd GitDev
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
           sudo yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
         EOF
@@ -181,7 +180,6 @@ jobs:
         echo "$SSH_PRIVATE_KEY" > private_key.pem
         chmod 600 private_key.pem
         ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
-          cd GitDev
           sudo docker-compose down
           sudo docker-compose up -d
         EOF
