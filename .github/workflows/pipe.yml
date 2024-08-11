@@ -13,6 +13,7 @@ env:
   AWS_REGION: ${{ vars.AWS_REGION }}
   IMAGE_TAG: ${{ github.run_number }}
   ENVNAME: ${{ github.ref_name }}
+  ECR_REPOSITORY: ${{ vars.ECR_REPOSITORY }}
 
 jobs:
   build-and-deploy:
@@ -26,17 +27,13 @@ jobs:
 
     - name: Set environment variables
       run: |
-        SERVICE_NAME=$(echo "${{ matrix.service }}" | tr '[:lower:]' '[:upper:]')
         if [ "${{ github.ref_name }}" == "Prod" ]; then
-          ECR_REPOSITORY="${SERVICE_NAME}_PROD"
           EC2_HOST=${{ vars.EC2_HOST_PROD }}
           S3_BUCKET="prod-xew"
         else
-          ECR_REPOSITORY="${SERVICE_NAME}_DEV"
           EC2_HOST=${{ vars.EC2_HOST_DEV }}
           S3_BUCKET="dev-xew"
         fi
-        echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
         echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
         echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
@@ -57,14 +54,17 @@ jobs:
         docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
 
     - name: Sync files to S3
+      if: github.ref_name == 'Prod'
       run: |
         aws s3 sync frontend/ s3://$S3_BUCKET --delete
 
     - name: Invalidate CloudFront cache
+      if: github.ref_name == 'Prod'
       run: |
         aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
     - name: Deploy to EC2
+      if: github.ref_name == 'Prod'
       env:
         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
       run: |
