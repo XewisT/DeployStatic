@@ -29,12 +29,15 @@ jobs:
         if [ "${{ github.ref_name }}" == "Prod" ]; then
           ECR_REPOSITORY="${{ matrix.service }}_prod"
           EC2_HOST=${{ vars.EC2_HOST_PROD }}
+          S3_BUCKET="prod-xew"
         else
           ECR_REPOSITORY="${{ matrix.service }}_dev"
           EC2_HOST=${{ vars.EC2_HOST_DEV }}
+          S3_BUCKET="dev-xew"
         fi
         echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
         echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
+        echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
@@ -52,43 +55,10 @@ jobs:
         docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
         docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
 
-    - name: Deploy to EC2
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      run: |
-        echo "$SSH_PRIVATE_KEY" > private_key.pem
-        chmod 600 private_key.pem
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
-          cd GitDev
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
-        EOF
-
-    - name: Restart docker-compose
-      env:
-        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-      run: |
-        echo "$SSH_PRIVATE_KEY" > private_key.pem
-        chmod 600 private_key.pem
-        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
-          cd GitDev
-          docker-compose down
-          docker-compose up -d
-        EOF
-
   sync-and-invalidate:
     runs-on: ubuntu-latest
     needs: build-and-deploy
     steps:
-    - name: Set environment variables
-      run: |
-        if [ "${{ github.ref_name }}" == "Prod" ]; then
-          S3_BUCKET="prod-xew"
-        else
-          S3_BUCKET="dev-xew"
-        fi
-        echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
-
     - name: Configure AWS credentials
       uses: aws-actions/configure-aws-credentials@v4
       with:
@@ -103,6 +73,31 @@ jobs:
     - name: Invalidate CloudFront cache
       run: |
         aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+  restart-docker-compose:
+    runs-on: ubuntu-latest
+    needs: build-and-deploy
+    steps:
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Deploy to EC2 and restart docker-compose
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
+          cd GitDev
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          sudo yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+          sudo docker-compose down
+          sudo docker-compose up -d
+        EOF
 
 # name: Deploy to ECR
 
