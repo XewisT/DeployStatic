@@ -108,15 +108,15 @@ jobs:
     - name: Set environment variables
       run: |
         if [ "${{ matrix.environment }}" == "Prod" ]; then
-          ECR_REPOSITORY=${{ vars.['BACKEND_'${{ matrix.service | upper }}'_PROD'] }}
+          ECR_REPOSITORY="BACKEND_${{ matrix.service | upper }}_PROD"
           EC2_HOST=${{ vars.EC2_HOST_PROD }}
           S3_BUCKET="prod-xew"
         else
-          ECR_REPOSITORY=${{ vars['BACKEND_'${{ matrix.service | upper }}'_DEV'] }}
+          ECR_REPOSITORY="BACKEND_${{ matrix.service | upper }}_DEV"
           EC2_HOST=${{ vars.EC2_HOST_DEV }}
           S3_BUCKET="dev-xew"
         fi
-        echo "ECR_REPOSITORY=$ECR_REPOSITORY" >> $GITHUB_ENV
+        echo "ECR_REPOSITORY=${{ vars[$ECR_REPOSITORY] }}" >> $GITHUB_ENV
         echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
         echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
@@ -133,8 +133,8 @@ jobs:
 
     - name: Build and push image to ECR
       run: |
-        docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
-        docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
+        docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
+        docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
 
     - name: Sync files to S3
       run: |
@@ -153,7 +153,7 @@ jobs:
         ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
           cd GitDev
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-          yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+          yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
           docker-compose down
           docker-compose up -d
         EOF
