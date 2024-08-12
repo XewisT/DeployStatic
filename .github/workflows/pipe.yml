@@ -107,7 +107,10 @@ jobs:
           docker build -t $ECR_REGISTRY/${{ needs.set-environment-backend_redis.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG -f backend_redis/Dockerfile .
           docker push $ECR_REGISTRY/${{ needs.set-environment-backend_redis.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG
   deploy-to-ec2:
-    needs: build-and-push-backend_redis
+    needs: 
+      - build-and-push-backend_redis
+      - build-and-push-backend_rds
+      
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2
