@@ -73,17 +73,13 @@ jobs:
         run: |
           echo "$SSH_PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
-
           for SERVICE in backend_rds backend_redis; do
-            ENVNAME_LOWER=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]')
-            ECR_REPOSITORY="${SERVICE}_${ENVNAME_LOWER}"
+            ECR_REPOSITORY="${SERVICE}_${{ github.ref_name }} | tr '[:upper:]' '[:lower:]'"
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-              yq e '.services.${SERVICE}.image = "${ECR_REGISTRY}/${ECR_REPOSITORY}:${ENVNAME}-${IMAGE_TAG}"' -i docker-compose.yml
+              yq e ".services.$SERVICE.image = '$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG'" -i docker-compose.yml
           EOF
           done
-
-
 
   restart-docker-compose:
     needs: deploy-to-ec2
@@ -106,7 +102,6 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        
       - name: Sync files to S3
         run: |
           ls -la
