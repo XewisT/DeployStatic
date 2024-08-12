@@ -1,8 +1,8 @@
 services:
   backend_rds:
-    build: ./backend_rds
+    image: ./backend_rds
     environment:
-      CORS_ALLOWED_ORIGINS: "https://prod.dev-vysh.com"
+      CORS_ALLOWED_ORIGINS: "https://dev-vysh.com"
       DB_NAME: mydatabase
       DB_PASSWORD: mypassword
       DB_USER: mydatabaseuser
@@ -14,9 +14,9 @@ services:
       - db
 
   backend_redis:
-    build: ./backend_redis
+    image: ./backend_redis
     environment:
-      CORS_ALLOWED_ORIGINS: "https://prod.dev-vysh.com"
+      CORS_ALLOWED_ORIGINS: "https://dev-vysh.com"
       REDIS_HOST: redis
       REDIS_PORT: 6379
       REDIS_DB: 0
