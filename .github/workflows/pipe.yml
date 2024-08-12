@@ -28,11 +28,11 @@ jobs:
         id: set-env
         run: |
           if [ "${{ github.ref_name }}" == "Prod" ]; then
-            ECR_REPOSITORY="backend_rds-prod"
+            ECR_REPOSITORY="backend_rds_prod"
             EC2_HOST=${{ vars.EC2_HOST_PROD }}
             S3_BUCKET="prod-xew"
           else
-            ECR_REPOSITORY="backend_rds-dev"
+            ECR_REPOSITORY="backend_rds_dev"
             EC2_HOST=${{ vars.EC2_HOST_DEV }}
             S3_BUCKET="dev-xew"
           fi
@@ -73,11 +73,11 @@ jobs:
         id: set-env
         run: |
           if [ "${{ github.ref_name }}" == "Prod" ]; then
-            ECR_REPOSITORY="backend_redis-prod"
+            ECR_REPOSITORY="backend_redis_prod"
             EC2_HOST=${{ vars.EC2_HOST_PROD }}
             S3_BUCKET="prod-xew"
           else
-            ECR_REPOSITORY="backend_redis-dev"
+            ECR_REPOSITORY="backend_redis_dev"
             EC2_HOST=${{ vars.EC2_HOST_DEV }}
             S3_BUCKET="dev-xew"
           fi
