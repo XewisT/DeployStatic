@@ -58,7 +58,8 @@ jobs:
 
       - name: Build and push ${{ matrix.service }} image to ECR
         run: |
-          ECR_REPOSITORY="${{ matrix.service }}_${{ github.ref_name }}"
+          ENVNAME_LOWER=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]')
+          ECR_REPOSITORY="${{ matrix.service }}_${ENVNAME_LOWER}"
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
 
