@@ -1,137 +1,3 @@
-name: Deploy to ECR
-
-on:
-  workflow_dispatch:
-  push:
-    branches:
-      - Dev
-      - Prod
-
-env:
-  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
-  ACCOUNT_ID: ${{ vars.ACCOUNT_ID }}
-  AWS_REGION: ${{ vars.AWS_REGION }}
-  IMAGE_TAG: ${{ github.run_number }}
-  ENVNAME: ${{ github.ref_name }}
-  AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
-  AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-
-jobs:
-  set-environment:
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [backend_rds, backend_redis]
-    outputs:
-      ecr_repository: ${{ steps.set-env.outputs.ecr_repository }}
-      ec2_host: ${{ steps.set-env.outputs.ec2_host }}
-      s3_bucket: ${{ steps.set-env.outputs.s3_bucket }}
-    steps:
-      - name: Set environment variables
-        id: set-env
-        run: |
-          if [ "${{ github.ref_name }}" == "Prod" ]; then
-            ECR_REPOSITORY="${{ matrix.service }}_prod"
-            EC2_HOST=${{ vars.EC2_HOST_PROD }}
-            S3_BUCKET="prod-xew"
-          else
-            ECR_REPOSITORY="${{ matrix.service }}_dev"
-            EC2_HOST=${{ vars.EC2_HOST_DEV }}
-            S3_BUCKET="dev-xew"
-          fi
-          echo "::set-output name=ecr_repository::${ECR_REPOSITORY}"
-          echo "::set-output name=ec2_host::${EC2_HOST}"
-          echo "::set-output name=s3_bucket::${S3_BUCKET}"
-
-  checkout-code:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-  configure-aws:
-    needs: checkout-code
-    runs-on: ubuntu-latest
-    steps:
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-  login-to-ecr:
-    needs: configure-aws
-    runs-on: ubuntu-latest
-    steps:
-      - name: Log in to Amazon ECR
-        id: login-ecr
-        uses: aws-actions/amazon-ecr-login@v2
-
-  build-and-push-image:
-    needs: login-to-ecr
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [backend_rds, backend_redis]
-    steps:
-      - name: Build and push image to ECR
-        run: |
-          docker build -t $ECR_REGISTRY/${{ needs.set-environment.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
-          docker push $ECR_REGISTRY/${{ needs.set-environment.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG
-
-  sync-files-to-s3:
-    needs: build-and-push-image
-    runs-on: ubuntu-latest
-    steps:
-      - name: Sync files to S3
-        run: |
-          aws s3 sync frontend/ s3://$S3_BUCKET --delete
-
-  invalidate-cloudfront:
-    needs: sync-files-to-s3
-    runs-on: ubuntu-latest
-    steps:
-      - name: Invalidate CloudFront cache
-        run: |
-          aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
-
-  deploy-to-ec2:
-    needs: invalidate-cloudfront
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [backend_rds, backend_redis]
-    steps:
-      - name: Deploy to EC2
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          echo "$SSH_PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-            yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ needs.set-environment.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
-          EOF
-
-  restart-docker-compose:
-    needs: deploy-to-ec2
-    runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        service: [backend_rds, backend_redis]
-    steps:
-      - name: Restart docker-compose
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-        run: |
-          echo "$SSH_PRIVATE_KEY" > private_key.pem
-          chmod 600 private_key.pem
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
-            docker-compose down
-            docker-compose up -d
-          EOF
-
 # name: Deploy to ECR
 
 # on:
@@ -147,74 +13,208 @@ jobs:
 #   AWS_REGION: ${{ vars.AWS_REGION }}
 #   IMAGE_TAG: ${{ github.run_number }}
 #   ENVNAME: ${{ github.ref_name }}
+#   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 # jobs:
-#   build-and-deploy:
+#   set-environment:
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         service: [backend_rds, backend_redis]
+#     outputs:
+#       ecr_repository: ${{ steps.set-env.outputs.ecr_repository }}
+#       ec2_host: ${{ steps.set-env.outputs.ec2_host }}
+#       s3_bucket: ${{ steps.set-env.outputs.s3_bucket }}
+#     steps:
+#       - name: Set environment variables
+#         id: set-env
+#         run: |
+#           if [ "${{ github.ref_name }}" == "Prod" ]; then
+#             ECR_REPOSITORY="${{ matrix.service }}_prod"
+#             EC2_HOST=${{ vars.EC2_HOST_PROD }}
+#             S3_BUCKET="prod-xew"
+#           else
+#             ECR_REPOSITORY="${{ matrix.service }}_dev"
+#             EC2_HOST=${{ vars.EC2_HOST_DEV }}
+#             S3_BUCKET="dev-xew"
+#           fi
+#           echo "::set-output name=ecr_repository::${ECR_REPOSITORY}"
+#           echo "::set-output name=ec2_host::${EC2_HOST}"
+#           echo "::set-output name=s3_bucket::${S3_BUCKET}"
+
+#   checkout-code:
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#   configure-aws:
+#     needs: checkout-code
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+#   login-to-ecr:
+#     needs: configure-aws
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Log in to Amazon ECR
+#         id: login-ecr
+#         uses: aws-actions/amazon-ecr-login@v2
+
+#   build-and-push-image:
+#     needs: login-to-ecr
 #     runs-on: ubuntu-latest
 #     strategy:
 #       matrix:
 #         service: [backend_rds, backend_redis]
 #     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v4
+#       - name: Build and push image to ECR
+#         run: |
+#           docker build -t $ECR_REGISTRY/${{ needs.set-environment.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
+#           docker push $ECR_REGISTRY/${{ needs.set-environment.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG
 
-#     - name: Set environment variables
-#       run: |
-#         if [ "${{ github.ref_name }}" == "Prod" ]; then
-#           ECR_REPOSITORY="${{ matrix.service }}_prod"
-#           EC2_HOST=${{ vars.EC2_HOST_PROD }}
-#           S3_BUCKET="prod-xew"
-#         else
-#           ECR_REPOSITORY="${{ matrix.service }}_dev"
-#           EC2_HOST=${{ vars.EC2_HOST_DEV }}
-#           S3_BUCKET="dev-xew"
-#         fi
-#         echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
-#         echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
-#         echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
+#   sync-files-to-s3:
+#     needs: build-and-push-image
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Sync files to S3
+#         run: |
+#           aws s3 sync frontend/ s3://$S3_BUCKET --delete
 
-#     - name: Configure AWS credentials
-#       uses: aws-actions/configure-aws-credentials@v4
-#       with:
-#         aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-#         aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-#         aws-region: ${{ vars.AWS_REGION }}
+#   invalidate-cloudfront:
+#     needs: sync-files-to-s3
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Invalidate CloudFront cache
+#         run: |
+#           aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
-#     - name: Log in to Amazon ECR
-#       id: login-ecr
-#       uses: aws-actions/amazon-ecr-login@v2
+#   deploy-to-ec2:
+#     needs: invalidate-cloudfront
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         service: [backend_rds, backend_redis]
+#     steps:
+#       - name: Deploy to EC2
+#         env:
+#           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+#         run: |
+#           echo "$SSH_PRIVATE_KEY" > private_key.pem
+#           chmod 600 private_key.pem
+#           ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
+#             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+#             yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ needs.set-environment.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+#           EOF
 
-#     - name: Build and push image to ECR
-#       run: |
-#         docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
-#         docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
+#   restart-docker-compose:
+#     needs: deploy-to-ec2
+#     runs-on: ubuntu-latest
+#     strategy:
+#       matrix:
+#         service: [backend_rds, backend_redis]
+#     steps:
+#       - name: Restart docker-compose
+#         env:
+#           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+#         run: |
+#           echo "$SSH_PRIVATE_KEY" > private_key.pem
+#           chmod 600 private_key.pem
+#           ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
+#             docker-compose down
+#             docker-compose up -d
+#           EOF
 
-#     - name: Sync files to S3
-#       run: |
-#         aws s3 sync frontend/ s3://$S3_BUCKET --delete
+name: Deploy to ECR
 
-#     - name: Invalidate CloudFront cache
-#       run: |
-#         aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - Dev
+      - Prod
 
-#     - name: Deploy to EC2
-#       env:
-#         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-#       run: |
-#         echo "$SSH_PRIVATE_KEY" > private_key.pem
-#         chmod 600 private_key.pem
-#         ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
-#           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-#           yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
-#         EOF
+env:
+  ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+  ACCOUNT_ID: ${{ vars.ACCOUNT_ID }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
+  IMAGE_TAG: ${{ github.run_number }}
+  ENVNAME: ${{ github.ref_name }}
 
-#     - name: Restart docker-compose
-#       env:
-#         SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-#       run: |
-#         echo "$SSH_PRIVATE_KEY" > private_key.pem
-#         chmod 600 private_key.pem
-#         ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
-#           docker-compose down
-#           docker-compose up -d
-#         EOF
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend_rds, backend_redis]
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set environment variables
+      run: |
+        if [ "${{ github.ref_name }}" == "Prod" ]; then
+          ECR_REPOSITORY="${{ matrix.service }}_prod"
+          EC2_HOST=${{ vars.EC2_HOST_PROD }}
+          S3_BUCKET="prod-xew"
+        else
+          ECR_REPOSITORY="${{ matrix.service }}_dev"
+          EC2_HOST=${{ vars.EC2_HOST_DEV }}
+          S3_BUCKET="dev-xew"
+        fi
+        echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> $GITHUB_ENV
+        echo "EC2_HOST=$EC2_HOST" >> $GITHUB_ENV
+        echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - name: Log in to Amazon ECR
+      id: login-ecr
+      uses: aws-actions/amazon-ecr-login@v2
+
+    - name: Build and push image to ECR
+      run: |
+        docker build -t $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
+        docker push $ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG
+
+    - name: Sync files to S3
+      run: |
+        aws s3 sync frontend/ s3://$S3_BUCKET --delete
+
+    - name: Invalidate CloudFront cache
+      run: |
+        aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+    - name: Deploy to EC2
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          yq e '.services.${{ matrix.service }}.image = "$ECR_REGISTRY/${{ env.ECR_REPOSITORY }}:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+        EOF
+
+    - name: Restart docker-compose
+      env:
+        SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      run: |
+        echo "$SSH_PRIVATE_KEY" > private_key.pem
+        chmod 600 private_key.pem
+        ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@$EC2_HOST << EOF
+          docker-compose down
+          docker-compose up -d
+        EOF
