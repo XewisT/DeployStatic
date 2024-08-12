@@ -132,7 +132,7 @@
 #             docker-compose up -d
 #           EOF
 
-name: Deploy to ECR
+name: Deploy to ${{ github.ref_name }}
 
 on:
   workflow_dispatch:
