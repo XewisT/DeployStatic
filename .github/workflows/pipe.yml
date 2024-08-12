@@ -75,12 +75,13 @@ jobs:
           chmod 600 private_key.pem
 
           for SERVICE in backend_rds backend_redis; do
-            ECR_REPOSITORY=$(echo "${SERVICE}_${ github.ref_name }" | tr '[:upper:]' '[:lower:]')
+            ECR_REPOSITORY=$(echo "${SERVICE}_${ENVNAME}" | tr '[:upper:]' '[:lower:]')
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
               yq e '.services.${SERVICE}.image = "${ECR_REGISTRY}/${ECR_REPOSITORY}:${ENVNAME}-${IMAGE_TAG}"' -i docker-compose.yml
           EOF
           done
+
 
 
   restart-docker-compose:
