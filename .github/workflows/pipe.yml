@@ -132,7 +132,7 @@
 #             docker-compose up -d
 #           EOF
 
-name: Deploy to ${{ github.ref_name }}
+name: Deploy to $ENVNAME
 
 on:
   workflow_dispatch:
