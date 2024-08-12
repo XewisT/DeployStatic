@@ -17,32 +17,31 @@ env:
   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
 
 jobs:
-  set-environment-backend_rds:
+  set-environment:
     runs-on: ubuntu-latest
     outputs:
-      ecr_repository: ${{ steps.set-env.outputs.ecr_repository }}
       ec2_host: ${{ steps.set-env.outputs.ec2_host }}
       s3_bucket: ${{ steps.set-env.outputs.s3_bucket }}
     steps:
-      - name: Set environment variables for backend_rds
+      - name: Set environment variables
         id: set-env
         run: |
           if [ "${{ github.ref_name }}" == "Prod" ]; then
-            ECR_REPOSITORY="backend_rds_prod"
             EC2_HOST=${{ vars.EC2_HOST_PROD }}
             S3_BUCKET="prod-xew"
           else
-            ECR_REPOSITORY="backend_rds_dev"
             EC2_HOST=${{ vars.EC2_HOST_DEV }}
             S3_BUCKET="dev-xew"
           fi
-          echo "::set-output name=ecr_repository::${ECR_REPOSITORY}"
           echo "::set-output name=ec2_host::${EC2_HOST}"
-          echo "::set-output name=s3_bucket::${S3_BUCKET}}"
+          echo "::set-output name=s3_bucket::${S3_BUCKET}"
 
-  build-and-push-backend_rds:
-    needs: set-environment-backend_rds
+  build-and-push:
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        service: [backend_rds, backend_redis]
+    needs: set-environment
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -57,60 +56,14 @@ jobs:
       - name: Log in to Amazon ECR
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Build and push backend_rds image to ECR
+      - name: Build and push ${{ matrix.service }} image to ECR
         run: |
-          docker build -t $ECR_REGISTRY/${{ needs.set-environment-backend_rds.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG -f backend_rds/Dockerfile .
-          docker push $ECR_REGISTRY/${{ needs.set-environment-backend_rds.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG
+          ECR_REPOSITORY="${{ matrix.service }}_${{ github.ref_name }}"
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
 
-  set-environment-backend_redis:
-    runs-on: ubuntu-latest
-    outputs:
-      ecr_repository: ${{ steps.set-env.outputs.ecr_repository }}
-      ec2_host: ${{ steps.set-env.outputs.ec2_host }}
-      s3_bucket: ${{ steps.set-env.outputs.s3_bucket }}
-    steps:
-      - name: Set environment variables for backend_redis
-        id: set-env
-        run: |
-          if [ "${{ github.ref_name }}" == "Prod" ]; then
-            ECR_REPOSITORY="backend_redis_prod"
-            EC2_HOST=${{ vars.EC2_HOST_PROD }}
-            S3_BUCKET="prod-xew"
-          else
-            ECR_REPOSITORY="backend_redis_dev"
-            EC2_HOST=${{ vars.EC2_HOST_DEV }}
-            S3_BUCKET="dev-xew"
-          fi
-          echo "::set-output name=ecr_repository::${ECR_REPOSITORY}"
-          echo "::set-output name=ec2_host::${EC2_HOST}"
-          echo "::set-output name=s3_bucket::${S3_BUCKET}}"
-
-  build-and-push-backend_redis:
-    needs: set-environment-backend_redis
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Log in to Amazon ECR
-        uses: aws-actions/amazon-ecr-login@v2
-
-      - name: Build and push backend_redis image to ECR
-        run: |
-          docker build -t $ECR_REGISTRY/${{ needs.set-environment-backend_redis.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG -f backend_redis/Dockerfile .
-          docker push $ECR_REGISTRY/${{ needs.set-environment-backend_redis.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG
   deploy-to-ec2:
-    needs: 
-      - build-and-push-backend_redis
-      - build-and-push-backend_rds
-      
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2
@@ -119,11 +72,13 @@ jobs:
         run: |
           echo "$SSH_PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment-backend_redis.outputs.ec2_host }} << EOF
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-            yq e '.services.backend_rds.image = "$ECR_REGISTRY/backend_rds:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
-            yq e '.services.backend_redis.image = "$ECR_REGISTRY/backend_redis:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
-          EOF
+          for SERVICE in backend_rds backend_redis; do
+            ECR_REPOSITORY="${SERVICE}_${{ github.ref_name }}"
+            ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
+              aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+              yq e ".services.$SERVICE.image = '$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG'" -i docker-compose.yml
+            EOF
+          done
 
   restart-docker-compose:
     needs: deploy-to-ec2
@@ -135,13 +90,13 @@ jobs:
         run: |
           echo "$SSH_PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
-          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment-backend_redis.outputs.ec2_host }} << EOF
+          ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
             docker-compose down
             docker-compose up -d
           EOF
 
   sync-files-to-s3:
-    needs: build-and-push-backend_redis
+    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Sync files to S3
@@ -155,6 +110,165 @@ jobs:
       - name: Invalidate CloudFront cache
         run: |
           aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
+
+
+# name: Deploy to ECR
+
+# on:
+#   workflow_dispatch:
+#   push:
+#     branches:
+#       - Dev
+#       - Prod
+
+# env:
+#   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
+#   ACCOUNT_ID: ${{ vars.ACCOUNT_ID }}
+#   AWS_REGION: ${{ vars.AWS_REGION }}
+#   IMAGE_TAG: ${{ github.run_number }}
+#   ENVNAME: ${{ github.ref_name }}
+#   AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+#   AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+# jobs:
+#   set-environment-backend_rds:
+#     runs-on: ubuntu-latest
+#     outputs:
+#       ecr_repository: ${{ steps.set-env.outputs.ecr_repository }}
+#       ec2_host: ${{ steps.set-env.outputs.ec2_host }}
+#       s3_bucket: ${{ steps.set-env.outputs.s3_bucket }}
+#     steps:
+#       - name: Set environment variables for backend_rds
+#         id: set-env
+#         run: |
+#           if [ "${{ github.ref_name }}" == "Prod" ]; then
+#             ECR_REPOSITORY="backend_rds_prod"
+#             EC2_HOST=${{ vars.EC2_HOST_PROD }}
+#             S3_BUCKET="prod-xew"
+#           else
+#             ECR_REPOSITORY="backend_rds_dev"
+#             EC2_HOST=${{ vars.EC2_HOST_DEV }}
+#             S3_BUCKET="dev-xew"
+#           fi
+#           echo "::set-output name=ecr_repository::${ECR_REPOSITORY}"
+#           echo "::set-output name=ec2_host::${EC2_HOST}"
+#           echo "::set-output name=s3_bucket::${S3_BUCKET}}"
+
+#   build-and-push-backend_rds:
+#     needs: set-environment-backend_rds
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       - name: Log in to Amazon ECR
+#         uses: aws-actions/amazon-ecr-login@v2
+
+#       - name: Build and push backend_rds image to ECR
+#         run: |
+#           docker build -t $ECR_REGISTRY/${{ needs.set-environment-backend_rds.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG -f backend_rds/Dockerfile .
+#           docker push $ECR_REGISTRY/${{ needs.set-environment-backend_rds.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG
+
+#   set-environment-backend_redis:
+#     runs-on: ubuntu-latest
+#     outputs:
+#       ecr_repository: ${{ steps.set-env.outputs.ecr_repository }}
+#       ec2_host: ${{ steps.set-env.outputs.ec2_host }}
+#       s3_bucket: ${{ steps.set-env.outputs.s3_bucket }}
+#     steps:
+#       - name: Set environment variables for backend_redis
+#         id: set-env
+#         run: |
+#           if [ "${{ github.ref_name }}" == "Prod" ]; then
+#             ECR_REPOSITORY="backend_redis_prod"
+#             EC2_HOST=${{ vars.EC2_HOST_PROD }}
+#             S3_BUCKET="prod-xew"
+#           else
+#             ECR_REPOSITORY="backend_redis_dev"
+#             EC2_HOST=${{ vars.EC2_HOST_DEV }}
+#             S3_BUCKET="dev-xew"
+#           fi
+#           echo "::set-output name=ecr_repository::${ECR_REPOSITORY}"
+#           echo "::set-output name=ec2_host::${EC2_HOST}"
+#           echo "::set-output name=s3_bucket::${S3_BUCKET}}"
+
+#   build-and-push-backend_redis:
+#     needs: set-environment-backend_redis
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Checkout code
+#         uses: actions/checkout@v4
+
+#       - name: Configure AWS credentials
+#         uses: aws-actions/configure-aws-credentials@v4
+#         with:
+#           aws-access-key-id: ${{ env.AWS_ACCESS_KEY_ID }}
+#           aws-secret-access-key: ${{ env.AWS_SECRET_ACCESS_KEY }}
+#           aws-region: ${{ env.AWS_REGION }}
+
+#       - name: Log in to Amazon ECR
+#         uses: aws-actions/amazon-ecr-login@v2
+
+#       - name: Build and push backend_redis image to ECR
+#         run: |
+#           docker build -t $ECR_REGISTRY/${{ needs.set-environment-backend_redis.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG -f backend_redis/Dockerfile .
+#           docker push $ECR_REGISTRY/${{ needs.set-environment-backend_redis.outputs.ecr_repository }}:$ENVNAME-$IMAGE_TAG
+#   deploy-to-ec2:
+#     needs: 
+#       - build-and-push-backend_redis
+#       - build-and-push-backend_rds
+      
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Deploy to EC2
+#         env:
+#           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+#         run: |
+#           echo "$SSH_PRIVATE_KEY" > private_key.pem
+#           chmod 600 private_key.pem
+#           ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment-backend_redis.outputs.ec2_host }} << EOF
+#             aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+#             yq e '.services.backend_rds.image = "$ECR_REGISTRY/backend_rds:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+#             yq e '.services.backend_redis.image = "$ECR_REGISTRY/backend_redis:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
+#           EOF
+
+#   restart-docker-compose:
+#     needs: deploy-to-ec2
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Restart docker-compose
+#         env:
+#           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+#         run: |
+#           echo "$SSH_PRIVATE_KEY" > private_key.pem
+#           chmod 600 private_key.pem
+#           ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment-backend_redis.outputs.ec2_host }} << EOF
+#             docker-compose down
+#             docker-compose up -d
+#           EOF
+
+#   sync-files-to-s3:
+#     needs: build-and-push-backend_redis
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Sync files to S3
+#         run: |
+#           aws s3 sync frontend/ s3://$S3_BUCKET --delete
+
+#   invalidate-cloudfront:
+#     needs: sync-files-to-s3
+#     runs-on: ubuntu-latest
+#     steps:
+#       - name: Invalidate CloudFront cache
+#         run: |
+#           aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
 
 # # name: Deploy to ECR
