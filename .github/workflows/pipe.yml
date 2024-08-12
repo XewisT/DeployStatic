@@ -86,7 +86,7 @@ jobs:
           echo "::set-output name=s3_bucket::${S3_BUCKET}}"
 
   build-and-push-backend_redis:
-    needs: build-and-push-backend_rds
+    needs: set-environment-backend_redis
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
