@@ -100,7 +100,7 @@ jobs:
             yq e '.services.backend_redis.image = "$ECR_REGISTRY/backend_redis:$ENVNAME-$IMAGE_TAG"' -i docker-compose.yml
           EOF
 
-restart-docker-compose:
+  restart-docker-compose:
     needs: deploy-to-ec2
     runs-on: ubuntu-latest
     steps:
