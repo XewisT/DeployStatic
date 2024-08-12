@@ -78,7 +78,7 @@ jobs:
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
               yq e ".services.$SERVICE.image = '$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG'" -i docker-compose.yml
-            EOF
+          EOF
           done
 
   restart-docker-compose:
@@ -102,6 +102,7 @@ jobs:
     steps:
       - name: Sync files to S3
         run: |
+          ls -la
           aws s3 sync frontend/ s3://$S3_BUCKET --delete
 
   invalidate-cloudfront:
@@ -272,6 +273,21 @@ jobs:
 #           aws cloudfront create-invalidation --distribution-id ${{ vars.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
 
 
+
+
+##
+##
+##
+##
+##
+##
+##
+##
+##
+
+
+
+
 # # name: Deploy to ECR
 
 # # on:
@@ -405,6 +421,22 @@ jobs:
 # #             docker-compose down
 # #             docker-compose up -d
 # #           EOF
+
+
+
+
+##
+##
+##
+##
+##
+##
+##
+##
+##
+##
+
+#
 
 # name: Deploy to ECR
 
