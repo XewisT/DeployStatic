@@ -33,8 +33,6 @@ jobs:
             EC2_HOST=${{ vars.EC2_HOST_DEV }}
             S3_BUCKET=${{ vars.S3_DEV }}
           fi
-          echo "EC2_HOST=$EC2_HOST"
-          echo "S3_BUCKET=$S3_BUCKET"
           echo "::set-output name=ec2_host::${EC2_HOST}"
           echo "::set-output name=s3_bucket::${S3_BUCKET}"
 
@@ -109,10 +107,9 @@ jobs:
       - set-environment
     runs-on: ubuntu-latest
     steps:
-      - name: Check S3_BUCKET value
-        run: echo "S3_BUCKET is $S3_BUCKET"
       - name: Checkout code
         uses: actions/checkout@v4
+
       - name: Sync files to S3
         run: |
           aws s3 sync frontend/ s3://${{ needs.set-environment.outputs.s3_bucket }} --delete
