@@ -28,14 +28,13 @@ jobs:
         run: |
           if [ "${{ github.ref_name }}" == "prod" ]; then
             EC2_HOST=${{ vars.EC2_HOST_PROD }}
-            S3_BUCKET="prod-xew"
+            S3_BUCKET=${{ vars.S3_PROD }}
           else
             EC2_HOST=${{ vars.EC2_HOST_DEV }}
-            S3_BUCKET="dev-xew"
+            S3_BUCKET=${{ vars.S3_DEV }}
           fi
           echo "::set-output name=ec2_host::${EC2_HOST}"
           echo "::set-output name=s3_bucket::${S3_BUCKET}"
-          echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
   build-and-push:
     runs-on: ubuntu-latest
