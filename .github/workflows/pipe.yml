@@ -87,7 +87,9 @@ jobs:
           done
 
   restart-docker-compose:
-    needs: deploy-to-ec2
+    needs: 
+      - deploy-to-ec2
+      - set-environment
     runs-on: ubuntu-latest
     steps:
       - name: Restart docker-compose
