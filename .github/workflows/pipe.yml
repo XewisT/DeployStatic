@@ -100,7 +100,9 @@ jobs:
           EOF
 
   sync-files-to-s3:
-    needs: build-and-push
+    needs: 
+      - build-and-push
+      - set-environment
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
