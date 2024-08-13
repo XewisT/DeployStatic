@@ -4,8 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - Dev
-      - Prod
+      - dev
+      - prod
 
 env:
   ECR_REGISTRY: ${{ vars.ECR_REGISTRY }}
@@ -26,7 +26,7 @@ jobs:
       - name: Set environment variables
         id: set-env
         run: |
-          if [ "${{ github.ref_name }}" == "Prod" ]; then
+          if [ "${{ github.ref_name }}" == "prod" ]; then
             EC2_HOST=${{ vars.EC2_HOST_PROD }}
             S3_BUCKET="prod-xew"
           else
@@ -58,7 +58,7 @@ jobs:
 
       - name: Build and push ${{ matrix.service }} image to ECR
         run: |
-          ENVNAME_LOWER=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]')
+          ENVNAME_LOWER=$(echo "${{ github.ref_name }}")
           ECR_REPOSITORY="${{ matrix.service }}_${ENVNAME_LOWER}"
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG -f ${{ matrix.service }}/Dockerfile .
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
@@ -74,7 +74,7 @@ jobs:
           echo "$SSH_PRIVATE_KEY" > private_key.pem
           chmod 600 private_key.pem
           for SERVICE in backend_rds backend_redis; do
-            ENVNAME_LOW=$(echo "${{ github.ref_name }}" | tr '[:upper:]' '[:lower:]')
+            ENVNAME_LOW=$(echo "${{ github.ref_name }}")
             ECR_REPOSITORY="${SERVICE}_${ENVNAME_LOW}"
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
@@ -105,7 +105,6 @@ jobs:
         uses: actions/checkout@v4
       - name: Sync files to S3
         run: |
-          ls -la
           aws s3 sync frontend/ s3://$S3_BUCKET --delete
 
   invalidate-cloudfront:
