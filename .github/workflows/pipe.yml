@@ -110,6 +110,8 @@ jobs:
       - name: Sync files to S3
         run: |
           aws s3 sync frontend/ s3://$S3_BUCKET --delete
+      - name: Check S3_BUCKET value
+        run: echo "S3_BUCKET is $S3_BUCKET"
 
   invalidate-cloudfront:
     needs: sync-files-to-s3
