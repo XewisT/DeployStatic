@@ -35,6 +35,7 @@ jobs:
           fi
           echo "::set-output name=ec2_host::${EC2_HOST}"
           echo "::set-output name=s3_bucket::${S3_BUCKET}"
+          echo "S3_BUCKET=$S3_BUCKET" >> $GITHUB_ENV
 
   build-and-push:
     runs-on: ubuntu-latest
