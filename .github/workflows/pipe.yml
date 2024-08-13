@@ -64,7 +64,9 @@ jobs:
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG
 
   deploy-to-ec2:
-    needs: build-and-push
+    needs: 
+      - build-and-push
+      - set-environment
     runs-on: ubuntu-latest
     steps:
       - name: Deploy to EC2
