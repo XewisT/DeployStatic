@@ -82,7 +82,7 @@ jobs:
             ECR_REPOSITORY="${SERVICE}_${ENVNAME_LOW}"
             ssh -o StrictHostKeyChecking=no -i private_key.pem ubuntu@${{ needs.set-environment.outputs.ec2_host }} << EOF
               aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
-              yq e ".services.$SERVICE.image = '$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG'" -i docker-compose.yml
+              yq e ".services.\"$SERVICE\".image = \"$ECR_REGISTRY/$ECR_REPOSITORY:$ENVNAME-$IMAGE_TAG\"" -i docker-compose.yml
           EOF
           done
 
